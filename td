@@ -1079,7 +1079,6 @@ function GUI:UpdateUIState()
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     end
     self.InvContainer.Size = UDim2.new(1, -10, 1, -35)
-    self.InvContainer.Position = UDim2.new(0, 5, 0, 30) -- เพิ่มบรรทัดนี้เพื่อ Reset ค่าเริ่มต้น (30 คือความสูงหัวข้อ)
 
     if StateManager.currentMainTab == "Players" then
         self.SubMenuFrame.Visible = false
@@ -1142,47 +1141,75 @@ function GUI:RefreshInventory()
     end
 end
 
--- [[ 🔥 FIXED: No Scrollbar + Centered Grid 🔥 ]] --
 function GUI:RenderCrateGrid()
-    -- Hide Scrollbar
+    -- ตั้งค่าพื้นฐานของ ScrollingFrame
     self.InvContainer.ScrollBarThickness = 0
+    self.InvContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y 
+    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, 0)     
     
-    -- Switch to Grid Layout
+    -- ดึงข้อมูลจาก Inventory เพื่อตรวจสอบว่ากล่องไหนมีอยู่แล้ว (แม้จะเป็น 0 ก็ตาม)
+    local replica = ReplicaListener:GetReplica()
+    local playerData = replica and replica.Data
+    local inventoryCrates = (playerData and playerData.CratesService and playerData.CratesService.Crates) or {}
+
+    -- จัดการ Padding และ Layout
+    local padding = self.InvContainer:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.InvContainer)
+    padding.PaddingTop = UDim.new(0, 15) 
+    padding.PaddingBottom = UDim.new(0, 20)
+    
     if self.InvContainer:FindFirstChild("UIListLayout") then self.InvContainer.UIListLayout:Destroy() end
     
     local layout = self.InvContainer:FindFirstChild("UIGridLayout")
     if not layout then
         layout = Instance.new("UIGridLayout", self.InvContainer)
-        layout.CellPadding = UDim2.new(0, 5, 0, 5)
-        layout.CellSize = UDim2.new(0, 90, 0, 110)
+        layout.CellPadding = UDim2.new(0, 10, 0, 10)
+        layout.CellSize = UDim2.new(0, 80, 0, 100) 
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        -- Center Alignment
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     end
 
+    -- กรองรายชื่อกล่อง
     local cratesList = {}
     for name, info in pairs(CratesInfo) do
         if type(info) == "table" then
-            table.insert(cratesList, {Name = info.Name or name, Image = info.Image or "0"})
+            local crateName = info.Name or name
+            if crateName ~= "KeKa Crate" then 
+                table.insert(cratesList, {Name = crateName, Image = info.Image or "0"})
+            end
         end
     end
     table.sort(cratesList, function(a, b) return a.Name < b.Name end)
 
+    -- วนลูปสร้างการ์ดแต่ละใบ
     for _, crate in ipairs(cratesList) do
+        -- ตรวจสอบเงื่อนไข: มีในกระเป๋าไหม และ ถูกเลือกอยู่ไหม
+        local isNotSpawnable = inventoryCrates[crate.Name] ~= nil
+        local isSelected = StateManager.selectedCrates[crate.Name] ~= nil
+
         local Card = Instance.new("Frame")
         Card.Name = crate.Name
         Card.Parent = self.InvContainer
-        Card.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        Card.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         UIFactory.AddCorner(Card, 6)
         
-        -- Stroke for selection status
-        local stroke = UIFactory.AddStroke(Card, Color3.fromRGB(60,60,60), 2, 0)
+        -- กำหนดสีขอบเริ่มต้น (ถ้ามีในกระเป๋าจะเป็นสีแดง)
+        local strokeColor = Color3.fromRGB(55, 55, 60)
+        if isNotSpawnable then
+            strokeColor = Color3.fromRGB(255, 85, 85) -- สีแดงเตือน
+        end
+        
+        -- ถ้าถูกเลือกอยู่ สีเขียวจะทับสีอื่น
+        if isSelected then
+            strokeColor = THEME.CrateSelected
+        end
+
+        local stroke = UIFactory.AddStroke(Card, strokeColor, 1.5, 0.2)
         
         local Image = Instance.new("ImageLabel")
         Image.Parent = Card
         Image.BackgroundTransparency = 1
-        Image.Position = UDim2.new(0, 4, 0, 4)
-        Image.Size = UDim2.new(1, -8, 0, 65)
+        Image.Position = UDim2.new(0, 5, 0, 12) 
+        Image.Size = UDim2.new(1, -10, 0, 50)  
         local imgId = tostring(crate.Image)
         if not imgId:find("rbxassetid://") then imgId = "rbxassetid://" .. imgId end
         Image.Image = imgId
@@ -1191,70 +1218,67 @@ function GUI:RenderCrateGrid()
         local NameLbl = Instance.new("TextLabel")
         NameLbl.Parent = Card
         NameLbl.BackgroundTransparency = 1
-        NameLbl.Position = UDim2.new(0, 2, 0, 72)
-        NameLbl.Size = UDim2.new(1, -4, 0, 35)
+        NameLbl.Position = UDim2.new(0, 2, 0, 65) 
+        NameLbl.Size = UDim2.new(1, -4, 0, 30)
         NameLbl.Font = Enum.Font.Gotham
         NameLbl.Text = crate.Name
-        NameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-        NameLbl.TextSize = 9
-        NameLbl.TextWrapped = true
-        NameLbl.TextYAlignment = Enum.TextYAlignment.Top
         
-        -- Check Logic
-        local isSelected = StateManager.selectedCrates[crate.Name] ~= nil
+        -- ปรับสีตัวหนังสือให้เข้ากับสถานะ
         if isSelected then
-            stroke.Color = THEME.CrateSelected
             NameLbl.Text = crate.Name .. "\n[x" .. StateManager.selectedCrates[crate.Name] .. "]"
             NameLbl.TextColor3 = THEME.CrateSelected
+        elseif isNotSpawnable then
+            NameLbl.TextColor3 = Color3.fromRGB(255, 150, 150) -- สีแดงจางๆ
+        else
+            NameLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
         end
         
+        NameLbl.TextSize = 8 
+        NameLbl.TextWrapped = true
+        NameLbl.TextYAlignment = Enum.TextYAlignment.Top
+
+        -- จัดการปุ่มคลิกและการส่งสัญญาณเทรด
         local ClickBtn = Instance.new("TextButton")
         ClickBtn.Parent = Card
         ClickBtn.BackgroundTransparency = 1
         ClickBtn.Size = UDim2.new(1, 0, 1, 0)
         ClickBtn.Text = ""
-        
         ClickBtn.MouseButton1Click:Connect(function()
             if not Utils.IsTradeActive() then
                 StateManager:SetStatus("⚠️ Open Trade Menu first!", THEME.Fail, self.StatusLabel)
                 return
             end
 
+            -- แจ้งเตือนสถานะถ้าเป็นกล่องที่มีอยู่แล้ว
+            if isNotSpawnable then
+                StateManager:SetStatus("🚫 This crate exists in your inventory!", Color3.fromRGB(255, 85, 85), self.StatusLabel)
+            end
+
             if StateManager.selectedCrates[crate.Name] then
-                -- Unselect
+                -- กรณีคลิกซ้ำเพื่อเอาออก
                 local oldAmount = StateManager.selectedCrates[crate.Name]
                 StateManager:ToggleCrateSelection(crate.Name, nil)
                 
-                -- Update UI
-                stroke.Color = Color3.fromRGB(60,60,60)
+                -- คืนค่าสีตามสถานะ Inventory
+                stroke.Color = isNotSpawnable and Color3.fromRGB(255, 85, 85) or Color3.fromRGB(55, 55, 60)
                 NameLbl.Text = crate.Name
-                NameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+                NameLbl.TextColor3 = isNotSpawnable and Color3.fromRGB(255, 150, 150) or Color3.fromRGB(200, 200, 200)
                 
-                -- Remove from Trade
-                local itemData = { Name = crate.Name, Service = "CratesService", Category = "Crates" }
-                TradeManager.SendTradeSignal("Remove", itemData, oldAmount, self.StatusLabel)
-                
+                TradeManager.SendTradeSignal("Remove", { Name = crate.Name, Service = "CratesService", Category = "Crates" }, oldAmount, self.StatusLabel)
             else
-                -- Select (Popup)
-                self:ShowQuantityPopup({Default = 100, Max = 99999}, function(qty)
+                -- กรณีคลิกเพื่อเลือกเพิ่ม
+                self:ShowQuantityPopup({Default = 1000, Max = 9999}, function(qty)
                     StateManager:ToggleCrateSelection(crate.Name, qty)
                     
-                    -- Update UI
                     stroke.Color = THEME.CrateSelected
                     NameLbl.Text = crate.Name .. "\n[x" .. qty .. "]"
                     NameLbl.TextColor3 = THEME.CrateSelected
                     
-                    -- Add to Trade
-                    local itemData = { Name = crate.Name, Service = "CratesService", Category = "Crates" }
-                    TradeManager.SendTradeSignal("Add", itemData, qty, self.StatusLabel)
+                    TradeManager.SendTradeSignal("Add", { Name = crate.Name, Service = "CratesService", Category = "Crates" }, qty, self.StatusLabel)
                 end)
             end
         end)
     end
-    
-    -- Adjust Canvas
-    local rows = math.ceil(#cratesList / 3) 
-    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, rows * 120)
 end
 
 function GUI:RenderDupeMenu()
