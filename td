@@ -866,16 +866,36 @@ function InventoryManager.GetCratesList()
         return crates 
     end
 
+    -- Debug: แสดงจำนวนรายการทั้งหมด
+    local totalCount = 0
+    for _ in pairs(CratesInfo) do totalCount = totalCount + 1 end
+    print("🔍 Total CratesInfo entries:", totalCount)
+
     for name, info in pairs(CratesInfo) do
+        -- ลบ filter type check ออก เพราะอาจมีทั้ง table และ string
+        local crateName = name
+        local crateImage = "0"
+        
         if type(info) == "table" then
-            table.insert(crates, {
-                Name = info.Name or name,
-                Image = info.Image or "0"
-            })
+            crateName = info.Name or name
+            crateImage = info.Image or info.ID or "0"
+        elseif type(info) == "string" then
+            -- ถ้าเป็น string ตรงๆ ก็ใช้ name เลย
+            crateName = name
         end
+        
+        -- Debug แต่ละรายการ
+        print("📦 Found crate:", crateName, "| Image:", crateImage)
+        
+        table.insert(crates, {
+            Name = crateName,
+            Image = crateImage
+        })
     end
     
     table.sort(crates, function(a, b) return a.Name < b.Name end)
+    
+    print("✅ Loaded " .. #crates .. " crates for display")
     
     return crates
 end
