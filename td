@@ -1069,9 +1069,7 @@ function GUI:UpdateUIState()
     self:UpdateSubTabs()
     self.DupeWarning.Visible = false
     
-    -- Reset Scroll Layout & ScrollBar
-    self.InvContainer.ScrollBarThickness = 3 -- [แก้ไข] รีเซ็ตให้ Scrollbar กลับมาปกติในหน้าอื่น
-    
+    -- Reset Scroll Layout
     if self.InvContainer:FindFirstChild("UIGridLayout") then
         self.InvContainer:ClearAllChildren()
         local layout = Instance.new("UIListLayout", self.InvContainer)
@@ -1100,8 +1098,10 @@ function GUI:UpdateUIState()
         self.InvFrame.Size = UDim2.new(1, -150, 1, -80)
         self.InvHeader.Text = "✨ Magic Dupe (" .. StateManager.currentDupeTab .. ")"
         
+        -- Crates Exception (No Warning Text, Uses Grid)
         if StateManager.currentDupeTab == "Crates" then
             self.DupeWarning.Visible = false
+            -- We'll handle grid switch in Render function
         else
             self.DupeWarning.Visible = true
             self.InvContainer.Size = UDim2.new(1, -10, 1, -95)
@@ -1143,23 +1143,30 @@ end
 
 -- [[ 🔥 New Feature: Crate Grid Render 🔥 ]] --
 function GUI:RenderCrateGrid()
-    -- [แก้ไข] ซ่อน Scroll Bar เฉพาะหน้านี้
+    -- 1. ซ่อน ScrollBar แบบถาวร
     self.InvContainer.ScrollBarThickness = 0 
+    self.InvContainer.ScrollingEnabled = true -- ยังให้เลื่อนได้อยู่
 
-    -- Switch to Grid Layout
-    if self.InvContainer:FindFirstChild("UIListLayout") then self.InvContainer.UIListLayout:Destroy() end
-    
-    local layout = self.InvContainer:FindFirstChild("UIGridLayout")
-    if not layout then
-        layout = Instance.new("UIGridLayout", self.InvContainer)
-        layout.CellPadding = UDim2.new(0, 5, 0, 5)
-        layout.CellSize = UDim2.new(0, 90, 0, 110)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
+    -- 2. ล้าง Layout เก่าทิ้งให้หมด (สำคัญมาก: ป้องกันการจำค่าเก่าที่ชิดซ้าย)
+    for _, child in pairs(self.InvContainer:GetChildren()) do
+        if child:IsA("UIGridLayout") or child:IsA("UIListLayout") or child:IsA("UIPadding") then
+            child:Destroy()
+        end
     end
 
-    -- [แก้ไข] ทำให้ Grid อยู่กึ่งกลาง
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    -- 3. สร้าง Grid Layout ใหม่ และบังคับกึ่งกลาง
+    local layout = Instance.new("UIGridLayout", self.InvContainer)
+    layout.CellPadding = UDim2.new(0, 10, 0, 10) -- ระยะห่างระหว่างกล่อง
+    layout.CellSize = UDim2.new(0, 95, 0, 120) -- ขนาดกล่อง (ปรับให้ใหญ่ขึ้นเล็กน้อยเพื่อให้เห็นชัด)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center -- [หัวใจสำคัญ] บังคับให้อยู่กลาง
 
+    -- 4. เพิ่ม Padding รอบๆ ไม่ให้กล่องชิดขอบจอเกินไป
+    local padding = Instance.new("UIPadding", self.InvContainer)
+    padding.PaddingTop = UDim.new(0, 15)
+    padding.PaddingBottom = UDim.new(0, 15)
+    
+    -- 5. ดึงข้อมูล Crates และเรียงลำดับ
     local cratesList = {}
     for name, info in pairs(CratesInfo) do
         if type(info) == "table" then
@@ -1168,39 +1175,42 @@ function GUI:RenderCrateGrid()
     end
     table.sort(cratesList, function(a, b) return a.Name < b.Name end)
 
+    -- 6. สร้าง UI แต่ละกล่อง
     for _, crate in ipairs(cratesList) do
         local Card = Instance.new("Frame")
         Card.Name = crate.Name
         Card.Parent = self.InvContainer
-        Card.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-        UIFactory.AddCorner(Card, 6)
+        Card.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        UIFactory.AddCorner(Card, 8)
         
-        -- Stroke for selection status
+        -- Stroke (กรอบ)
         local stroke = UIFactory.AddStroke(Card, Color3.fromRGB(60,60,60), 2, 0)
         
+        -- Image
         local Image = Instance.new("ImageLabel")
         Image.Parent = Card
         Image.BackgroundTransparency = 1
-        Image.Position = UDim2.new(0, 4, 0, 4)
-        Image.Size = UDim2.new(1, -8, 0, 65)
+        Image.Position = UDim2.new(0, 5, 0, 5)
+        Image.Size = UDim2.new(1, -10, 0, 70)
         local imgId = tostring(crate.Image)
         if not imgId:find("rbxassetid://") then imgId = "rbxassetid://" .. imgId end
         Image.Image = imgId
         Image.ScaleType = Enum.ScaleType.Fit
         
+        -- Text
         local NameLbl = Instance.new("TextLabel")
         NameLbl.Parent = Card
         NameLbl.BackgroundTransparency = 1
-        NameLbl.Position = UDim2.new(0, 2, 0, 72)
+        NameLbl.Position = UDim2.new(0, 2, 0, 80)
         NameLbl.Size = UDim2.new(1, -4, 0, 35)
-        NameLbl.Font = Enum.Font.Gotham
+        NameLbl.Font = Enum.Font.GothamBold
         NameLbl.Text = crate.Name
-        NameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-        NameLbl.TextSize = 9
+        NameLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+        NameLbl.TextSize = 10
         NameLbl.TextWrapped = true
         NameLbl.TextYAlignment = Enum.TextYAlignment.Top
         
-        -- Check Logic
+        -- Selection Logic (เปลี่ยนสีเมื่อเลือก)
         local isSelected = StateManager.selectedCrates[crate.Name] ~= nil
         if isSelected then
             stroke.Color = THEME.CrateSelected
@@ -1208,6 +1218,7 @@ function GUI:RenderCrateGrid()
             NameLbl.TextColor3 = THEME.CrateSelected
         end
         
+        -- Click Event
         local ClickBtn = Instance.new("TextButton")
         ClickBtn.Parent = Card
         ClickBtn.BackgroundTransparency = 1
@@ -1224,27 +1235,18 @@ function GUI:RenderCrateGrid()
                 -- Unselect
                 local oldAmount = StateManager.selectedCrates[crate.Name]
                 StateManager:ToggleCrateSelection(crate.Name, nil)
-                
-                -- Update UI
                 stroke.Color = Color3.fromRGB(60,60,60)
                 NameLbl.Text = crate.Name
-                NameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-                
-                -- Remove from Trade
+                NameLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
                 local itemData = { Name = crate.Name, Service = "CratesService", Category = "Crates" }
                 TradeManager.SendTradeSignal("Remove", itemData, oldAmount, self.StatusLabel)
-                
             else
-                -- Select (Popup)
+                -- Select with Popup
                 self:ShowQuantityPopup({Default = 100, Max = 99999}, function(qty)
                     StateManager:ToggleCrateSelection(crate.Name, qty)
-                    
-                    -- Update UI
                     stroke.Color = THEME.CrateSelected
                     NameLbl.Text = crate.Name .. "\n[x" .. qty .. "]"
                     NameLbl.TextColor3 = THEME.CrateSelected
-                    
-                    -- Add to Trade
                     local itemData = { Name = crate.Name, Service = "CratesService", Category = "Crates" }
                     TradeManager.SendTradeSignal("Add", itemData, qty, self.StatusLabel)
                 end)
@@ -1252,9 +1254,11 @@ function GUI:RenderCrateGrid()
         end)
     end
     
-    -- Adjust Canvas
-    local rows = math.ceil(#cratesList / 3) 
-    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, rows * 120 + 20) -- เพิ่ม Padding ด้านล่างนิดหน่อย
+    -- 7. คำนวณความสูงของ Canvas ให้พอดี (ป้องกันการเลื่อนแล้วติดขัด)
+    -- สมมติ 1 แถวมีประมาณ 5-6 กล่อง (กว้าง 95 + ช่องว่าง 10 = 105px)
+    local rowEstimate = math.ceil(#cratesList / 6) + 1 
+    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, rowEstimate * 135)
+end
 end
 
 function GUI:RenderDupeMenu()
