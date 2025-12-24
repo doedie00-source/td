@@ -1079,6 +1079,7 @@ function GUI:UpdateUIState()
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     end
     self.InvContainer.Size = UDim2.new(1, -10, 1, -35)
+    self.InvContainer.Position = UDim2.new(0, 5, 0, 30) -- เพิ่มบรรทัดนี้เพื่อ Reset ค่าเริ่มต้น (30 คือความสูงหัวข้อ)
 
     if StateManager.currentMainTab == "Players" then
         self.SubMenuFrame.Visible = false
