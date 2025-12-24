@@ -1069,7 +1069,9 @@ function GUI:UpdateUIState()
     self:UpdateSubTabs()
     self.DupeWarning.Visible = false
     
-    -- Reset Scroll Layout
+    -- Reset Scroll Layout & ScrollBar
+    self.InvContainer.ScrollBarThickness = 3 -- [แก้ไข] รีเซ็ตให้ Scrollbar กลับมาปกติในหน้าอื่น
+    
     if self.InvContainer:FindFirstChild("UIGridLayout") then
         self.InvContainer:ClearAllChildren()
         local layout = Instance.new("UIListLayout", self.InvContainer)
@@ -1098,10 +1100,8 @@ function GUI:UpdateUIState()
         self.InvFrame.Size = UDim2.new(1, -150, 1, -80)
         self.InvHeader.Text = "✨ Magic Dupe (" .. StateManager.currentDupeTab .. ")"
         
-        -- Crates Exception (No Warning Text, Uses Grid)
         if StateManager.currentDupeTab == "Crates" then
             self.DupeWarning.Visible = false
-            -- We'll handle grid switch in Render function
         else
             self.DupeWarning.Visible = true
             self.InvContainer.Size = UDim2.new(1, -10, 1, -95)
@@ -1143,14 +1143,22 @@ end
 
 -- [[ 🔥 New Feature: Crate Grid Render 🔥 ]] --
 function GUI:RenderCrateGrid()
+    -- [แก้ไข] ซ่อน Scroll Bar เฉพาะหน้านี้
+    self.InvContainer.ScrollBarThickness = 0 
+
     -- Switch to Grid Layout
     if self.InvContainer:FindFirstChild("UIListLayout") then self.InvContainer.UIListLayout:Destroy() end
-    if not self.InvContainer:FindFirstChild("UIGridLayout") then
-        local layout = Instance.new("UIGridLayout", self.InvContainer)
+    
+    local layout = self.InvContainer:FindFirstChild("UIGridLayout")
+    if not layout then
+        layout = Instance.new("UIGridLayout", self.InvContainer)
         layout.CellPadding = UDim2.new(0, 5, 0, 5)
         layout.CellSize = UDim2.new(0, 90, 0, 110)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
     end
+
+    -- [แก้ไข] ทำให้ Grid อยู่กึ่งกลาง
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     local cratesList = {}
     for name, info in pairs(CratesInfo) do
@@ -1245,8 +1253,8 @@ function GUI:RenderCrateGrid()
     end
     
     -- Adjust Canvas
-    local rows = math.ceil(#cratesList / 3) -- 3 items per row roughly
-    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, rows * 120)
+    local rows = math.ceil(#cratesList / 3) 
+    self.InvContainer.CanvasSize = UDim2.new(0, 0, 0, rows * 120 + 20) -- เพิ่ม Padding ด้านล่างนิดหน่อย
 end
 
 function GUI:RenderDupeMenu()
