@@ -854,7 +854,7 @@ function InventoryManager.CollectItems(category, playerData)
     return items
 end
 
--- 🆕 Get Crates List from CratesInfo
+-- 🆕 Get Crates List from CratesInfo (ใช้โค้ดแบบเดียวกับไฟล์ตัวอย่าง)
 function InventoryManager.GetCratesList()
     local crates = {}
     local success, CratesInfo = pcall(function()
@@ -866,36 +866,20 @@ function InventoryManager.GetCratesList()
         return crates 
     end
 
-    -- Debug: แสดงจำนวนรายการทั้งหมด
-    local totalCount = 0
-    for _ in pairs(CratesInfo) do totalCount = totalCount + 1 end
-    print("🔍 Total CratesInfo entries:", totalCount)
-
+    -- ใช้โค้ดเหมือนไฟล์ตัวอย่างเป๊ะๆ
     for name, info in pairs(CratesInfo) do
-        -- ลบ filter type check ออก เพราะอาจมีทั้ง table และ string
-        local crateName = name
-        local crateImage = "0"
-        
         if type(info) == "table" then
-            crateName = info.Name or name
-            crateImage = info.Image or info.ID or "0"
-        elseif type(info) == "string" then
-            -- ถ้าเป็น string ตรงๆ ก็ใช้ name เลย
-            crateName = name
+            table.insert(crates, {
+                Name = info.Name or name,
+                ID = info.Image or "0"  -- เปลี่ยนจาก Image เป็น ID
+            })
         end
-        
-        -- Debug แต่ละรายการ
-        print("📦 Found crate:", crateName, "| Image:", crateImage)
-        
-        table.insert(crates, {
-            Name = crateName,
-            Image = crateImage
-        })
     end
     
+    -- เรียงลำดับ A-Z
     table.sort(crates, function(a, b) return a.Name < b.Name end)
     
-    print("✅ Loaded " .. #crates .. " crates for display")
+    print("✅ พบ Crates ทั้งหมด: " .. #crates .. " รายการ")
     
     return crates
 end
@@ -1419,7 +1403,8 @@ function GUI:RenderCratesDupeMenu()
         Image.Position = UDim2.new(0, 4, 0, 4)
         Image.Size = UDim2.new(1, -8, 0, 65)
         
-        local finalID = tostring(crateData.Image)
+        -- ตรวจสอบ ID รูป (เหมือนไฟล์ตัวอย่างเป๊ะๆ)
+        local finalID = tostring(crateData.ID)
         if not finalID:find("rbxassetid://") then
             finalID = "rbxassetid://" .. finalID
         end
