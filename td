@@ -1141,7 +1141,7 @@ function GUI:RefreshInventory()
     end
 end
 
--- [[ 🔥 New Feature: Crate Grid Render 🔥 ]] --
+-- [[ 🔥 แก้ไข: ซ่อน Scrollbar + จัดกึ่งกลาง 🔥 ]] --
 function GUI:RenderCrateGrid()
     -- ปรับค่า Container ให้ซ่อน Scrollbar
     self.InvContainer.ScrollBarThickness = 0 
