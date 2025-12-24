@@ -1249,24 +1249,35 @@ function GUI:RenderCrateGrid()
                 return
             end
 
-            -- แจ้งเตือนสถานะถ้าเป็นกล่องที่มีอยู่แล้ว
+            -- [[ 🔴 จุดที่ต้องเพิ่ม: เช็คเงื่อนไขห้ามกด ]] --
+            
+            -- 1. ถ้ามีของอยู่แล้ว (isNotSpawnable) ให้หยุดเลย กันพลาดเทรดของจริงหาย
             if isNotSpawnable then
                 StateManager:SetStatus("🚫 This crate exists in your inventory!", Color3.fromRGB(255, 85, 85), self.StatusLabel)
+                return -- <--- ใส่ return ตรงนี้ เพื่อไม่ให้ไปทำบรรทัดล่างต่อ
             end
 
+            -- 2. (เสริม) ถ้าอยากกันกล่องเฉพาะที่ห้ามเทรด (Blacklist)
+            local BlacklistedCrates = {"Starter Crate", "Untradable Box"} -- ใส่ชื่อกล่องที่ห้ามกดตรงนี้
+            if table.find(BlacklistedCrates, crate.Name) then
+                 StateManager:SetStatus("🚫 This crate cannot be traded!", THEME.Fail, self.StatusLabel)
+                 return -- <--- หยุดทำงานทันที
+            end
+
+            -- [[ จบจุดแก้ไข ]] --
+
             if StateManager.selectedCrates[crate.Name] then
-                -- กรณีคลิกซ้ำเพื่อเอาออก
+                -- Logic เอาออก (เหมือนเดิม)
                 local oldAmount = StateManager.selectedCrates[crate.Name]
                 StateManager:ToggleCrateSelection(crate.Name, nil)
                 
-                -- คืนค่าสีตามสถานะ Inventory
                 stroke.Color = isNotSpawnable and Color3.fromRGB(255, 85, 85) or Color3.fromRGB(55, 55, 60)
                 NameLbl.Text = crate.Name
                 NameLbl.TextColor3 = isNotSpawnable and Color3.fromRGB(255, 150, 150) or Color3.fromRGB(200, 200, 200)
                 
                 TradeManager.SendTradeSignal("Remove", { Name = crate.Name, Service = "CratesService", Category = "Crates" }, oldAmount, self.StatusLabel)
             else
-                -- กรณีคลิกเพื่อเลือกเพิ่ม
+                -- Logic เลือกเพิ่ม (เหมือนเดิม)
                 self:ShowQuantityPopup({Default = 1000, Max = 9999}, function(qty)
                     StateManager:ToggleCrateSelection(crate.Name, qty)
                     
