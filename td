@@ -1,7 +1,7 @@
--- [[ 🎯 Universal Trade System V6.4 - Crate Dupe Added ]] --
--- Added: Crates Tab in Dupe Menu (Grid Selection System)
--- Added: Crate Injection Logic based on provided files
--- Retained: All previous Trade & Dupe functionalities
+-- [[ 🎯 Universal Trade System V6.5 - Crate Dupe (Fixed) ]] --
+-- Added: Crates Tab with Grid Layout (Centered & No Scrollbar)
+-- Fixed: Scrollbar Visibility & Alignment
+-- Fixed: Variable Scope Errors
 
 -- ========================================== --
 -- 📦 Services & Dependencies
@@ -22,7 +22,10 @@ local LocalPlayer = Players.LocalPlayer
 local SuccessLoad, CratesInfo = pcall(function()
     return require(ReplicatedStorage.GameInfo.CratesInfo)
 end)
-if not SuccessLoad then warn("⚠️ Failed to load CratesInfo") CratesInfo = {} end
+if not SuccessLoad then 
+    warn("⚠️ Failed to load CratesInfo") 
+    CratesInfo = {} 
+end
 
 -- Cleanup Old GUI
 if CoreGui:FindFirstChild("CleanTradeGUI") then
@@ -33,7 +36,7 @@ end
 -- ⚙️ Configuration & Constants
 -- ========================================== --
 local CONFIG = {
-    VERSION = "6.4",
+    VERSION = "6.5",
     GUI_NAME = "CleanTradeGUI",
     
     -- Window Settings
@@ -282,6 +285,7 @@ function UIFactory.CreateScrollingFrame(props)
         layout.CellPadding = UDim2.new(0, 5, 0, 5)
         layout.CellSize = UDim2.new(0, 90, 0, 110)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     else
         local layout = Instance.new("UIListLayout", scroll)
         layout.Padding = UDim.new(0, props.Padding or CONFIG.LIST_PADDING)
@@ -342,7 +346,7 @@ local StateManager = {
     currentSubTab = "Pets",
     currentDupeTab = "Scrolls",
     itemsInTrade = {},
-    selectedCrates = {}, -- Stores selected crates for the Dupe Tab { [Name] = Amount }
+    selectedCrates = {}, 
     playerButtons = {},
     statusResetTask = nil,
     inputConnection = nil,
@@ -360,7 +364,7 @@ end
 
 function StateManager:ResetTrade()
     self.itemsInTrade = {}
-    self.selectedCrates = {} -- Reset crates selection too
+    self.selectedCrates = {}
 end
 
 function StateManager:AddToTrade(key, itemData)
@@ -385,10 +389,10 @@ end
 function StateManager:ToggleCrateSelection(name, amount)
     if self.selectedCrates[name] then
         self.selectedCrates[name] = nil
-        return false -- Deselected
+        return false 
     else
         self.selectedCrates[name] = amount
-        return true -- Selected
+        return true 
     end
 end
 
@@ -434,18 +438,16 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, cal
         btn.Size = UDim2.new(0, 100, 0, 100)
         btn.BackgroundTransparency = 1
         
-        -- Default Attributes
         btn:SetAttribute("Service", itemData.Service)
         btn:SetAttribute("Index", itemData.Name) 
         btn:SetAttribute("Quantity", amount)
         btn:SetAttribute("IsEquipped", false)
         
-        -- [[ Special Logic for Crates (from Crates.txt) ]]
+        -- [[ Special Logic for Crates ]]
         if itemData.Category == "Crates" then
              btn:SetAttribute("ItemName", itemData.Name)
              btn:SetAttribute("Name", itemData.Name)
              btn:SetAttribute("Amount", amount)
-             -- Ensure Service is CratesService
              btn:SetAttribute("Service", "CratesService")
         end
 
@@ -888,7 +890,7 @@ function GUI:UpdateSubTabs()
     if StateManager.currentMainTab == "Trade" then
         tabs = {"Pets", "Secrets", "Accessories", "Crates"}
     elseif StateManager.currentMainTab == "Dupe" then
-        tabs = {"Scrolls", "Tickets", "Potions", "Crates"} -- Added Crates here
+        tabs = {"Scrolls", "Tickets", "Potions", "Crates"} 
     end
     
     for _, tabName in ipairs(tabs) do
@@ -1098,10 +1100,8 @@ function GUI:UpdateUIState()
         self.InvFrame.Size = UDim2.new(1, -150, 1, -80)
         self.InvHeader.Text = "✨ Magic Dupe (" .. StateManager.currentDupeTab .. ")"
         
-        -- Crates Exception (No Warning Text, Uses Grid)
         if StateManager.currentDupeTab == "Crates" then
             self.DupeWarning.Visible = false
-            -- We'll handle grid switch in Render function
         else
             self.DupeWarning.Visible = true
             self.InvContainer.Size = UDim2.new(1, -10, 1, -95)
@@ -1141,10 +1141,10 @@ function GUI:RefreshInventory()
     end
 end
 
--- [[ 🔥 แก้ไข: ซ่อน Scrollbar + จัดกึ่งกลาง 🔥 ]] --
+-- [[ 🔥 FIXED: No Scrollbar + Centered Grid 🔥 ]] --
 function GUI:RenderCrateGrid()
-    -- ปรับค่า Container ให้ซ่อน Scrollbar
-    self.InvContainer.ScrollBarThickness = 0 
+    -- Hide Scrollbar
+    self.InvContainer.ScrollBarThickness = 0
     
     -- Switch to Grid Layout
     if self.InvContainer:FindFirstChild("UIListLayout") then self.InvContainer.UIListLayout:Destroy() end
@@ -1155,8 +1155,7 @@ function GUI:RenderCrateGrid()
         layout.CellPadding = UDim2.new(0, 5, 0, 5)
         layout.CellSize = UDim2.new(0, 90, 0, 110)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        
-        -- [[ ✨ เพิ่มส่วนนี้เพื่อจัดกึ่งกลาง ✨ ]]
+        -- Center Alignment
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     end
 
